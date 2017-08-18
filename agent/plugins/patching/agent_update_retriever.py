@@ -8,7 +8,7 @@ from plugins.patching.data.application import AppUtils
 class AgentUpdateRetriever():
 
     @staticmethod
-    def _get_available_agent_file_data(github_release_assets, agent_platform):
+    def _get_available_agent_file_data(github_release_assets, platform):
         """Retrieves the file_uri information for the agent update. It gets
         the information from the assets of the release.
 
@@ -24,7 +24,7 @@ class AgentUpdateRetriever():
                     {
                         'file_name': 'VFAgent_0_7_0-deb.tar.gz',
                         'file_uri': 'https://api.github.com/repos/toppatch/vFenseAgent-nix/releases/assets/91651',
-                        'file_hash': '', # Currently no way of getting the hash
+                        'file_hash': '', # Currently no way of getting the hash,
                         'file_size': 544460
                     },
                     ...
@@ -37,7 +37,7 @@ class AgentUpdateRetriever():
             if not name:
                 continue
 
-            if agent_platform not in name:
+            if platform not in name:
                 continue
 
             data_dict = {
@@ -52,17 +52,18 @@ class AgentUpdateRetriever():
         return []
 
     @staticmethod
-    def get_available_agent_update(version_string, agent_platform):
+    def get_available_agent_update(platform, version_string):
         agent_update = None
 
         # TODO: don't hardcode
         releases_api = \
-            'https://api.github.com/repos/vfense/vFenseAgent-nix/releases'
+            'https://api.github.com/repos/toppatch/vFenseAgent-nix/releases'
 
         try:
             response = urllib2.urlopen(releases_api)
             releases = json.loads(response.read())
 
+            #version_string = settings.AgentVersion.split('-')[0]
             # Gets replaced in for loop if newer version is found
             current_version = [int(x) for x in version_string.split('.')]
 
@@ -82,12 +83,12 @@ class AgentUpdateRetriever():
                     continue
 
                 release_date = datetime.strptime(
-                    release.get('published_at'), "%Y-%m-%dT%XZ"
+                    release.get('published_at'), "%Y-%d-%mT%XZ"
                 ).strftime(settings.DATE_FORMAT)
 
                 update_file_data = \
                     AgentUpdateRetriever._get_available_agent_file_data(
-                        release.get('assets', []), agent_platform
+                        release.get('assets', []), platform
                     )
 
                 if not update_file_data:
@@ -110,7 +111,7 @@ class AgentUpdateRetriever():
                     agent_version = (
                         '.'.join([str(x) for x in release_version])
                         + '-'
-                        + agent_platform
+                        + platform
                     )
 
                     agent_update = AppUtils.create_app(

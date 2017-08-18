@@ -24,16 +24,17 @@ class OperationManager():
         self._operation_queue = queuesave.load_operation_queue()
         self._result_queue = queuesave.load_result_queue()
 
-        # Determines whether the operations in the result queue
-        # will be processed. Set to True when the agent receives a
-        # reponse_uris operation.
-        self._refreshed_response_uris = False
+        self._operation_queue_thread = \
+            Thread(target=self._operation_queue_loop)
+        self._operation_queue_thread.daemon = True
+        self._operation_queue_thread.start()
 
-        # Callback function for sending results. Set by the agent core.
-        self._send_results_callback = None
-        # Callback function allowing to get the response from the server
-        # immediately
-        self._send_message = None
+        self._result_queue_thread = Thread(target=self._result_queue_loop)
+        self._result_queue_thread.daemon = True
+        self._result_queue_thread.start()
+
+        # Callback function for results set by core
+        self._send_results = None
 
     def _load_plugin_handlers(self):
         for plugin in self._plugins.values():
@@ -60,7 +61,7 @@ class OperationManager():
 
             return False
 
-        result = self._send_results_callback(
+        result = self._send_results(
             operation_result,
             response_uri,
             request_method
@@ -74,96 +75,22 @@ class OperationManager():
 
         return result
 
-    def send_message_callback(self, callback):
-        """This callback can be used to receive immediate response from server
-        after sending a result. Does not send the received data to
-        self.server_response_processor; just returns it.
-        """
-        self._send_message = callback
-
-    def _get_initial_response_uris(self):
-        """Gets the initial response uris from the server before attempting
-        to do anything else. The response uris tell the agent where to
-        send any results/messages to the server depending on the operation
-        types.
-        """
-        wait_time = 20
-
-        response_uri = ResponseUris.get_response_uri(
-            OperationValue.RefreshResponseUris
-        )
-        request_method = ResponseUris.get_request_method(
-            OperationValue.RefreshResponseUris
-        )
-
-        while True:
-            logger.debug("Attempting to get initial response uris.")
-            sent, server_response = self._send_message(
-                {}, response_uri, request_method
-            )
-
-            try:
-                if not sent:
-                    raise Exception(
-                        "Failed to send message to server for initial response "
-                        "uris."
-                    )
-
-                operation = self.process_message(server_response)[0]
-
-                if operation.type == OperationValue.RefreshResponseUris:
-                    logger.debug("Retrieved initial response uris.")
-                    self.refresh_response_uris(operation)
-
-                    break
-
-                else:
-                    logger.error(
-                        "Receiving incorrect operation from server after call "
-                        "to refresh_response_uris API."
-                    )
-
-            except Exception as err:
-                logger.error("Failed to retrieve initial response uris.")
-                logger.exception(err)
-
-            logger.debug(
-                "Attempting to retrieve initial response uris again in "
-                "{0} seconds".format(wait_time)
-            )
-            time.sleep(20)
-
-    def _setup_queue_loops(self):
-        logger.debug("Setting up the queue loop threads.")
-        self._operation_queue_thread = Thread(target=self._operation_queue_loop)
-        self._operation_queue_thread.daemon = True
-
-        self._result_queue_thread = Thread(target=self._result_queue_loop)
-        self._result_queue_thread.daemon = True
-
-        logger.debug("Starting the queue processing loops.")
-        self._operation_queue_thread.start()
-        self._result_queue_thread.start()
-
-    def start(self):
-        # Initial response uris must be retrieved before anything else
-        self._get_initial_response_uris()
-        self.initial_data_sender()
-        self._setup_queue_loops()
-
-    def register_plugin_operation(self, operation, put_front=False):
+    def register_plugin_operation(self, message):
         """ Provides a way for plugins to store their custom made
         operations with the agent core.
 
         Args:
-            operation (SofOperation): An operation that must be a 
-                SofOperation instance (polymorphic).
+
+            - message: Operation as a JSON formatted string.
 
         Returns:
-            (bool) True if operation was added successfully. False otherwise.
+
+            - True if operation was added successfully. False otherwise.
         """
 
-        return self.add_to_operation_queue(operation, put_front)
+        self.add_to_operation_queue(message)
+
+        return True
 
     def _major_failure(self, operation, exception):
 
@@ -214,7 +141,7 @@ class OperationManager():
                 OperationValue.NewAgentId: self.new_agent_id_op,
                 OperationValue.Reboot: self.reboot_op,
                 OperationValue.Shutdown: self.shutdown_op,
-                OperationValue.RefreshResponseUris: self.refresh_response_uris
+                OperationValue.RefreshResponseUris: self.refresh_response_uris,
             }
 
             if operation.type in operation_methods:
@@ -242,7 +169,7 @@ class OperationManager():
     ###########################################################################
 
     def system_info_op(self, operation):
-        self.add_to_result_queue(self.system_info())
+        self.add_to_result_queue(self.system_info(operation))
 
     def new_agent_op(self, operation):
         operation = self._initial_data(operation)
@@ -269,12 +196,7 @@ class OperationManager():
         self.add_to_result_queue(operation)
 
     def new_agent_id_op(self, operation):
-        """Sets the id in the server message as the agent id and then saves
-        the settings.
-        """
-        _id = operation.json_message[OperationKey.AgentId]
-        settings.AgentId = _id
-        settings.save_settings()
+        self._new_agent_id(operation)
 
     def reboot_op(self, operation):
         netmanager.allow_checkin = False
@@ -359,14 +281,6 @@ class OperationManager():
             ResponseUris.ResponseDict = operation.data
             logger.debug("Refreshed response uris.")
 
-            logger.debug("Enabling the processing of results.")
-            self._refreshed_response_uris = True
-
-        else:
-            logger.debug(
-                "Refresh response uris operation has empty data."
-            )
-
     def plugin_op(self, operation):
         self._plugins[operation.plugin].run_operation(operation)
 
@@ -377,7 +291,7 @@ class OperationManager():
         for plugin in self._plugins.values():
             try:
 
-                plugin_data = plugin.initial_data()
+                plugin_data = plugin.initial_data(operation.type)
 
                 if plugin_data is not None:
                     operation.plugin_data[plugin.name()] = plugin_data
@@ -397,10 +311,7 @@ class OperationManager():
         root = {}
         root[OperationKey.Operation] = operation.type
         root[OperationKey.Rebooted] = self._is_boot_up()
-
-        # TODO: verify with server whether it is expecting this
-        root[OperationKey.Views] = settings.Views
-        root[OperationKey.Tags] = settings.Tags
+        root[OperationKey.CustomerName] = settings.Customer
 
         root[OperationKey.OperationId] = operation.id
         root[OperationKey.AgentId] = settings.AgentId
@@ -411,6 +322,15 @@ class OperationManager():
         root[OperationKey.Plugins] = operation.plugin_data
 
         return json.dumps(root)
+
+    def _new_agent_id(self, operation):
+        """ This will assign a new agent ID coming from the server.
+        @return: Nothing
+        """
+
+        _id = operation.json_message[OperationKey.AgentId]
+        settings.AgentId = _id
+        settings.save_settings()
 
     def _reboot_result(self, success, operation_id, message=''):
         result_dict = {
@@ -488,7 +408,7 @@ class OperationManager():
 
         operation = SofOperation()
 
-        if settings.AgentId:
+        if settings.AgentId != "":
             self._check_for_reboot()
             self._check_for_shutdown()
 
@@ -500,7 +420,7 @@ class OperationManager():
         self.process_operation(operation)
 
     def send_results_callback(self, callback):
-        self._send_results_callback = callback
+        self._send_results = callback
 
     def _plugin_not_found(self, operation):
         """
@@ -518,25 +438,26 @@ class OperationManager():
             logger.error("Failed to save operation queue to file.")
             logger.exception(e)
 
-    def add_to_operation_queue(self, operation, put_front=False):
+    def add_to_operation_queue(self, operation):
         """
         Put the operation to file.
 
         Args:
-            operation (SofOperation): A SofOperation instance to be processed.
-            put_front (bool): Whether to place in front of queue or not.
+            operation - The actual operation.
+
+            no_duplicate - Will not put the operation in the queue if there
+                           already exists an operation of the same type in
+                           queue.
 
         Returns:
             (bool) True if able to put the operation in queue, False otherwise.
 
         """
 
-        logger.debug(
-            "Adding ({0}, {1}) to operation queue. put_front: {2}".format(
-                operation.type, operation.id, put_front
-            )
-        )
-        return self._operation_queue.put(operation, put_front)
+        #if no_duplicate:
+        #    return self._operation_queue.put_non_duplicate(operation)
+
+        return self._operation_queue.put(operation)
 
     def _operation_queue_loop(self):
 
@@ -578,17 +499,14 @@ class OperationManager():
 
             if should_send:
 
-                logger.debug(
-                    "Results to be sent: {0}".format(
-                        [(op.type, op) for op in should_send]
-                    )
-                )
+                logger.debug("Results to be sent: {0}".format(should_send))
 
                 for result_op in should_send:
+                    # TODO: what should be done if fails to remove?
                     self._result_queue.remove(result_op)
                     self.process_result_operation(result_op)
 
-                    self._result_queue.done()
+                self._result_queue.done()
 
             else:
                 #logger.debug(
@@ -596,129 +514,75 @@ class OperationManager():
                 #)
                 time.sleep(4)
 
-    def _should_process_results(self, operation_type):
-        """Determines whether all things are set to send the results for this
-        operation type.
-
-        Args:
-            operation_type (string): The type of operation which the results
-                belong to.
-
-        Returns:
-            (bool): Whether or not to send the results.
-        """
-
-        # AgentId is not needed for a new agent operation.
-        if self._refreshed_response_uris and \
-           (settings.AgentId or operation_type == OperationValue.NewAgent):
-            return True
-
-        return False
-
     def process_result_operation(self, result_op):
-        """Attempts to send the results in the result queue."""
+        """ Attempts to send the results in the result queue. """
 
-        logger.debug(
-            "Processing result operation: ({0}, {1})".format(
-                result_op.type, result_op.id
-            )
-        )
+        #operation = result_op.operation
 
-        if result_op.should_be_sent() and \
-           self._should_process_results(result_op.type):
+        if result_op.should_be_sent():
             # No raw_result means it hasn't been processed
-            if result_op.operation_result != settings.EmptyValue:
+            if (result_op.operation_result != settings.EmptyValue):
 
                 # Operation has been processed, send results to server
                 send_result = self._save_and_send_results(
-                    result_op.type, result_op.operation_result
+                    result_op.operation_type, result_op.operation_result
                 )
 
-                if not send_result and result_op.retry:
+                if (not send_result and result_op.retry):
                     # Time this out for a few
                     result_op.timeout()
 
                     # Failed to send result, place back in queue
-                    logger.debug(
-                        "Adding ({0}, {1}) back to queue due to failure of "
-                        "sending result successfuly.".format(
-                            result_op.type, result_op.id
-                        )
-                    )
                     self.add_to_result_queue(result_op)
             else:
                 logger.debug(("Operation has not been processed, or"
                               " unknown operation was received."))
         else:
-            result_op.timeout()
-            logger.debug(
-                ("Not processing operation ({0}, {1}) because "
-                 "response_uris have not been refreshed and/or no agent id has "
-                 "been set.")
-                .format(result_op.type, result_op)
-            )
-
             self.add_to_result_queue(result_op)
 
     def add_to_result_queue(self, result_operation, retry=True):
         """
-        Adds an operation to the result queue which is then sent off to
-        the server.
+        Adds an operation to the result queue which sends it off to the server.
 
         Arguments:
-            result_operation (ResultOperation): An operation which must have an
-                operation type and raw_result attribute.
 
-            retry (bool): Determines if the result queue should continue
-                attempting to send the operation to the server in case of a
-                non 200 response.
+        result_operation
+            An operation which must have an operation type and raw_result
+            attribute.
+
+        retry
+            Determines if the result queue should continue attempting to send
+            the operation to the server in case of a non 200 response.
+
         """
 
         try:
             if not isinstance(result_operation, ResultOperation):
                 result_operation = ResultOperation(result_operation, retry)
 
-            logger.debug(
-                "Adding ({0}, {1}) to result queue.".format(
-                    result_operation.type, result_operation.id
-                )
-            )
             return self._result_queue.put(result_operation)
 
         except Exception as e:
             logger.error("Failed to add result to queue.")
             logger.exception(e)
 
-    def process_message(self, message):
-        operation_list = []
+    def server_response_processor(self, message):
 
         if message:
-            for op in message.get(OperationKey.Operations, []):
+            for op in message.get(OperationKey.Data, []):
+
+                # Loading operation for server in order for the queue
+                # dump to know if an operation is savable to file.
+
                 try:
                     operation = SofOperation(json.dumps(op))
-                    operation_list.append(operation)
+                    self.add_to_operation_queue(operation)
 
                 except Exception as e:
                     logger.debug(
                         "Failed to create operation from: {0}".format(op)
                     )
                     logger.exception(e)
-
-        return operation_list
-
-    def server_response_processor(self, message):
-        for operation in self.process_message(message):
-            put_front = False
-            if (operation.type == OperationValue.RefreshResponseUris or
-                operation.type == OperationValue.NewAgentId):
-                put_front = True
-
-            try:
-                self.add_to_operation_queue(operation, put_front)
-
-            except Exception as err:
-                logger.error("Failed to put operation in queue.")
-                logger.exception(err)
 
         self._save_uptime()
 
@@ -730,7 +594,8 @@ class OperationManager():
             'version': systeminfo.get_version(),
             'bit_type': systeminfo.get_bit_type(),
             'computer_name': systeminfo.get_computer_name(),
-            'machine_type': systeminfo.MachineType().get_machine_type()
+            'machine_type': systeminfo.MachineType().get_machine_type(),
+            'host_name': ''  # TODO: Implement
         }
 
         logger.debug(

@@ -45,19 +45,13 @@ class MainCore():
             operation_manager.server_response_processor
         )
 
-        operation_manager.send_results_callback(
-            net_manager.send_message_register_response
-        )
+        operation_manager.send_results_callback(net_manager.send_message)
 
-        # Gives ability to get immediate results for a call to the server
-        operation_manager.send_message_callback(net_manager.send_message)
+        operation_manager.initial_data_sender()
 
         for plugin in self.registered_plugins.values():
             plugin.start()
 
-        operation_manager.start()
-
-        # Start the checkin timer after everything else is started
         net_manager.start()
 
         logger.info("Ready up.")
@@ -112,6 +106,7 @@ class MainCore():
             self.registered_plugins[plugin.name()] = plugin
 
     def internet_on(self):
+
         try:
             urllib2.urlopen('http://www.google.com', timeout=3)
             logger.debug('Internet connection detected.')

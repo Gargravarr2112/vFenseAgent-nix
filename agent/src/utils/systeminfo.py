@@ -1,5 +1,4 @@
 import os
-import re
 import platform
 import subprocess
 import socket
@@ -40,12 +39,9 @@ def get_os_string():
 
     elif os_code == OSCode.Linux:
         distro_info = platform.linux_distribution(
-            supported_dists=supported_linux_distros
-        )
+            supported_dists=supported_linux_distros)
 
-        os_string = (
-            re.sub(r'"', '', '%s %s' % (distro_info[0], distro_info[1]))
-        )
+        os_string = '%s %s' % (distro_info[0], distro_info[1])
 
     return os_string
 

@@ -32,6 +32,7 @@ def run(program, *args):
     except OSError, e:
         sys.stderr.write("fork failed %d (%s)\n" % (e.errno, e.strerror))
         # logger.warning("fork failed %d (%s)\n" % (e.errno, e.strerror))
+        raise
         sys.exit(FORK_FAILED)
     return pid
 

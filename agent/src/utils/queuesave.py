@@ -19,8 +19,8 @@ def save_queue(queue, file_path, protocol=-1):
 
     queue_dump = queue.queue_dump()
 
+    # TODO: fix this hack!?
     savable_dump = []
-    non_savable_dump = []
     for op in queue_dump:
         if isinstance(op, SofOperation) or isinstance(op, ResultOperation):
             if op.is_savable():
@@ -28,19 +28,15 @@ def save_queue(queue, file_path, protocol=-1):
 
             else:
                 try:
-                    non_savable_dump.append((op.type, op.id))
+                    logger.debug(
+                        "{0} / {1} will not be saved.".format(op.id, op.type)
+                    )
                 except Exception:
-                    non_savable_dump.append(op)
+                    logger.debug("{0} will not be saved.".format(op))
 
                 continue
 
         savable_dump.append(op)
-
-    if non_savable_dump:
-        logger.debug(
-            "The following will not be saved in queue dump: {0}"
-            .format(non_savable_dump)
-        )
 
     try:
 

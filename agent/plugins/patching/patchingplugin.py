@@ -1,7 +1,6 @@
 import shutil
 import os
 import platform
-import re
 import glob
 import json
 import urllib2
@@ -43,14 +42,12 @@ class PatchingPlugin(AgentPlugin):
             return MacOpHandler()
 
         elif plat == 'linux':
-            distro = re.sub(r'"', '', platform.linux_distribution()[0].lower())
+            distro = platform.linux_distribution()[0].lower()
 
             # List to check RedHat derived distros that use yum.
             _redhat = 'red hat enterprise linux server'
             _rpm_distros = ['fedora', 'centos', 'centos linux']
-            _debian_distros = [
-                'debian', 'ubuntu', 'linuxmint', 'elementary os'
-            ]
+            _debian_distros = ['debian', 'ubuntu', 'linuxmint']
 
             if distro == _redhat:
                 from operationhandler.rhelhandler import RhelOpHandler
@@ -251,6 +248,8 @@ class PatchingPlugin(AgentPlugin):
 
     def _agent_update(self, operation, update_dir):
         install_method = self._get_install_method(operation.type)
+        # TODO(urgent): remove this, only for testing
+        #install_method = self._operation_handler.install_agent_update
 
         restart_needed = False
 
@@ -397,12 +396,7 @@ class PatchingPlugin(AgentPlugin):
 
         try:
 
-            logger.debug(
-                "Checking for update file: {0}".format(settings.update_file)
-            )
-
             if os.path.exists(settings.update_file):
-                logger.debug("Update file exists.")
                 with open(settings.update_file, 'r') as _file:
                     update_result = json.load(_file)
 
@@ -420,7 +414,7 @@ class PatchingPlugin(AgentPlugin):
                     success,  # success
                     'false',  # restart
                     error,  # error
-                    '{}'  # app json
+                    "{}"  # app json
                 )
 
                 logger.info(patchingsof_result.__dict__)
@@ -429,21 +423,29 @@ class PatchingPlugin(AgentPlugin):
 
                 os.remove(settings.update_file)
 
-            else:
-                logger.debug("Did not find the agent update file.")
-
         except Exception as e:
             logger.error("Failure while sending agent update result.")
             logger.exception(e)
 
-    def initial_data(self):
-        """Retrieves current installed applications and available updates.
+    def initial_data(self, operation_type):
+        """
+        Retrieves current installed applications and available updates.
+
+        Args:
+            operation_type - The type of operation determines what the plugin
+                             should return.
 
         Returns:
             (dict) Dictionary contains all installed and available
             applications.
+
         """
         self._check_if_updated()
+
+        if operation_type == OperationValue.Startup:
+            self.run_refresh_apps_operation()
+
+            return None
 
         data = {
             'data': self.refresh_apps()
@@ -734,10 +736,8 @@ class PatchingPlugin(AgentPlugin):
         self._register_operation(operation)
 
     def check_for_agent_update(self):
-        version_string, agent_platform = settings.AgentVersion.split('-')
-        agent_update = AgentUpdateRetriever.get_available_agent_update(
-            version_string, agent_platform
-        )
+        platform = settings.AgentVersion.split('-')[1]
+        agent_update = AgentUpdateRetriever.get_available_agent_update(platform)
 
         if agent_update:
             return agent_update.to_dict()

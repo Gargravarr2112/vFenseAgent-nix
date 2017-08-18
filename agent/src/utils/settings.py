@@ -62,9 +62,9 @@ ServerPort = None
 AgentPort = None
 AgentId = None
 LogLevel = None
-Token = None
-Views = []
-Tags = []
+Username = None
+Password = None
+Customer = None
 
 
 def _get_server_addresses():
@@ -122,13 +122,12 @@ def initialize(appName=None):
 
     @return: Nothing
     """
-    global _config
-
     global AgentName
     global AgentVersion
     global AgentDescription
     global AgentInstallDate
 
+    global _config
     global ServerAddress
     global ServerHostname
     global ServerIpAddress
@@ -136,9 +135,10 @@ def initialize(appName=None):
     global AgentPort
     global AgentId
     global LogLevel
-    global Token
-    global Views
-    global Tags
+    global _logger
+    global Username
+    global Password
+    global Customer
 
     _create_directories()
 
@@ -149,18 +149,9 @@ def initialize(appName=None):
     AgentPort = int(_config.get(_app_settings_section, 'agentport'))
     LogLevel = _config.get(_app_settings_section, 'loglevel')
     AgentId = _config.get(_app_settings_section, 'agentid')
-    Token = _config.get(_app_settings_section, 'token')
-
-    # If what was loaded is just an empty strings then leave the default
-    # values for Views and Tags (empty list) so that it is sent that way
-    # to the server.
-    loaded_views = _config.get(_app_settings_section, 'views')
-    if loaded_views:
-        Views = loaded_views.split(',')
-
-    loaded_tags = _config.get(_app_settings_section, 'tags')
-    if loaded_tags:
-        Tags = loaded_tags.split(',')
+    Username = _config.get(_app_settings_section, 'nu')
+    Password = _config.get(_app_settings_section, 'wp')
+    Customer = _config.get(_app_settings_section, 'customer')
 
     AgentName = _config.get(_agent_info_section, 'name')
     AgentVersion = _config.get(_agent_info_section, 'version')
@@ -181,26 +172,26 @@ def initialize(appName=None):
 
 
 def save_settings():
-    """Saves the settings to the agent config file."""
+    """ Saves the settings to the agent config file.
+    @return: Nothing
+    """
 
-    # Lists are strings with commas delimiting the elements in INI files
-    tags = ','.join(Tags)
-    views = ','.join(Views)
+    # TODO: should be tested before used.
 
-    _config.set(_app_settings_section, 'tags', tags)
-    _config.set(_app_settings_section, 'views', views)
+    _config.set(_app_settings_section, 'customer', Customer)
     _config.set(_app_settings_section, 'loglevel', LogLevel)
     _config.set(_app_settings_section, 'agentport', AgentPort)
     _config.set(_app_settings_section, 'serverport', ServerPort)
     _config.set(_app_settings_section, 'serveripaddress', ServerIpAddress)
     _config.set(_app_settings_section, 'serverhostname', ServerHostname)
-    _config.set(_app_settings_section, 'token', Token)
     _config.set(_app_settings_section, 'agentid', AgentId)
+    _config.set(_app_settings_section, 'nu', Username)
+    _config.set(_app_settings_section, 'wp', Password)
 
     _config.set(_agent_info_section, 'name', AgentName)
     _config.set(_agent_info_section, 'version', AgentVersion)
     _config.set(_agent_info_section, 'description', AgentDescription)
     _config.set(_agent_info_section, 'installdate', AgentInstallDate)
 
-    with open(_app_config_file, 'w') as _file:
-        _config.write(_file)
+    with open(_app_config_file, 'w') as f:
+        _config.write(f)

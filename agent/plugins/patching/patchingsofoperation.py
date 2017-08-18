@@ -20,7 +20,7 @@ class PatchingOperationValue():
     UninstallAgent = 'uninstall_agent'
     UpdatesAvailable = 'updates_available'
     ApplicationsInstalled = 'applications_installed'
-    RefreshApps = 'refresh_apps'
+    RefreshApps = 'updatesapplications'
     AvailableAgentUpdate = 'available_agent_update'
 
     # TODO: implement
@@ -260,12 +260,12 @@ class PatchingSofOperation(SofOperation):
         if not super(PatchingSofOperation, self).is_savable():
             return False
 
-        non_savable = [
-            PatchingOperationValue.RefreshApps,
-            PatchingOperationValue.AvailableAgentUpdate
-        ]
+        non_savable = [PatchingOperationValue.RefreshApps]
 
-        return not (self.type in non_savable)
+        if self.type in non_savable:
+            return False
+
+        return True
 
 
 # Simple nametuple to contain install results.

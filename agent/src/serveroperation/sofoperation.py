@@ -30,7 +30,6 @@ class OperationValue():
 class OperationKey():
 
     Operation = 'operation'
-    Operations = 'operations'
     OperationId = 'operation_id'
     Plugin = 'plugin'
     Data = 'data'
@@ -40,8 +39,7 @@ class OperationKey():
     Reboot = 'reboot'
     Rebooted = 'rebooted'
     VendorId = 'vendor_id'
-    Views = 'views'
-    Tags = 'tags'
+    CustomerName = 'customer_name'
     Message = 'message'
 
     Core = 'core'
@@ -65,9 +63,17 @@ class ResponseUris():
 
     # This dictionary is refreshed on a refresh response uri operation
     ResponseDict = {
-        OperationValue.RefreshResponseUris: {
-            OperationKey.ResponseUri: 'rvl/v2/core/uris/response',
-            OperationKey.RequestMethod: RequestMethod.GET
+        OperationValue.NewAgent: {
+            OperationKey.ResponseUri: 'rvl/v1/core/newagent',
+            OperationKey.RequestMethod: RequestMethod.POST
+        },
+        OperationValue.Startup: {
+            OperationKey.ResponseUri: 'rvl/v1/{0}/core/startup',
+            OperationKey.RequestMethod: RequestMethod.PUT
+        },
+        OperationValue.Login: {
+            OperationKey.ResponseUri: 'rvl/login',
+            OperationKey.RequestMethod: RequestMethod.POST
         }
     }
 
@@ -77,13 +83,17 @@ class ResponseUris():
                        .get(operation_type, {}) \
                        .get(OperationKey.ResponseUri, '')
 
-        return response_uri.format(settings.AgentId)
+        # TODO: remove once uris are placed in database
+        if operation_type == OperationValue.Startup:
+            return response_uri.format(settings.AgentId)
+
+        return response_uri
 
     @staticmethod
     def get_request_method(operation_type):
         return ResponseUris.ResponseDict \
-               .get(operation_type, {}) \
-               .get(OperationKey.RequestMethod, '')
+            .get(operation_type, {}) \
+            .get(OperationKey.RequestMethod, '')
 
 
 SelfGeneratedOpId = '-agent'
@@ -129,15 +139,13 @@ class SofOperation(object):
         self.raw_operation = message
 
     def is_savable(self):
-        non_savable = [
-            OperationValue.Reboot,
-            OperationValue.Shutdown,
-            OperationValue.Startup,
-            OperationValue.NewAgent,
-            OperationValue.RefreshResponseUris
-        ]
+        non_savable = [OperationValue.Reboot, OperationValue.Shutdown,
+                       OperationValue.Startup, OperationValue.NewAgent]
 
-        return not (self.type in non_savable)
+        if self.type in non_savable:
+            return False
+
+        return True
 
     def self_assigned_id(self):
         return str(uuid.uuid4()) + SelfGeneratedOpId
@@ -191,7 +199,7 @@ class ResultOperation():
         self.retry = retry
 
         #self.operation = operation
-        self.type = operation.type
+        self.operation_type = operation.type
         self.operation_result = operation.raw_result
 
         # Sets current time, no timeout
@@ -221,20 +229,13 @@ class ResultOperation():
         non_savable = [OperationValue.Startup, OperationValue.NewAgent]
 
         #if self.operation.type in non_savable:
-        if self.type in non_savable:
+        if self.operation_type in non_savable:
             return False
 
         return True
 
     def self_assigned_id(self):
         return str(uuid.uuid4()) + SelfGeneratedOpId
-
-    def to_dict(self):
-        return {
-            'operation_type': self.type,
-            'operation_result': self.operation_result,
-            'wait_until': self.wait_until
-        }
 
 
 class SofResult():
