@@ -43,7 +43,7 @@ class OperationManager():
 
     def _save_and_send_results(self, operation_type, operation_result):
 
-        # Check for self assigned operation IDs and send emtpy string
+        # Check for self assigned operation IDs and send empty string
         # to server if present.
         #op_id = operation.id
         #if SelfGeneratedOpId in operation.id:
@@ -415,6 +415,7 @@ class OperationManager():
             operation.type = OperationValue.Startup
 
         else:
+            logger.debug("Registering new agent with server.")
             operation.type = OperationValue.NewAgent
 
         self.process_operation(operation)
@@ -595,7 +596,7 @@ class OperationManager():
             'bit_type': systeminfo.get_bit_type(),
             'computer_name': systeminfo.get_computer_name(),
             'machine_type': systeminfo.MachineType().get_machine_type(),
-            'host_name': ''  # TODO: Implement
+            'host_name': systeminfo.get_host_name()
         }
 
         logger.debug(
@@ -640,6 +641,8 @@ class OperationManager():
         Returns:
             Nothing
         """
+        if not settings.uptime_file: #Allow this to be disabled to save disk IO and CPU
+            return
 
         uptime = systeminfo.uptime()
 

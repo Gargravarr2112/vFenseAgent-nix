@@ -78,33 +78,19 @@ def get_system_architecture():
 
 
 def get_computer_name():
-    """The FQDN of the machine.
+    """The bare machine name.
     @return: The computer name.
     """
 
-    if get_os_code() == OSCode.Mac:
+    hostname = platform.node()
+    if hostname.find('.'): #Fully-qualified, happens on Macs, so split out the computer name
+        hostname = hostname.split('.')[0]
+    return platform.node()
 
-        try:
-            process = subprocess.Popen(
-                ['sysctl', 'kern.hostname'],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-
-            output, error = process.communicate()
-
-            output = output.split(':')
-
-            if len(output) > 1:
-
-                return output[1].strip()
-
-        except Exception as e:
-
-            logger.error('Unable to process "sysctl kern.hostname".')
-            logger.error('Falling back to socket for hostname.')
-            logger.exception(e)
+def get_host_name():
+    """
+    @return: The FQDN of the machine.
+    """
 
     return socket.getfqdn()
 
@@ -158,7 +144,9 @@ class MachineType():
             'VMware Virtual Platform',
             'VirtualBox',
             'KVM',
-            'Bochs'
+            'Bochs',
+            'QEMU',
+            'innotek GmbH'
         ]
         self.dmidecode_path = self._get_dmidecode_path()
 
@@ -175,7 +163,7 @@ class MachineType():
 
     def get_machine_type(self):
         if self.dmidecode_path:
-            cmd = [self.dmidecode_path, '-s', 'system-product-name']
+            cmd = [self.dmidecode_path, '-s', 'system-manufacturer']
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             output, err = proc.communicate()
 
