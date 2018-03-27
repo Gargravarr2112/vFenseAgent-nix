@@ -186,6 +186,7 @@ def _vine_set_password(pwd=None):
     msg = ''
 
     try:
+        logger.debug("Trying to store password using {0}".format(pwd_cmd))
 
         if os.path.exists(_vine_pwd_file):
             os.remove(_vine_pwd_file)
@@ -193,7 +194,8 @@ def _vine_set_password(pwd=None):
         process = subprocess.Popen(
             [pwd_cmd, pwd, _vine_pwd_file],
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stderr=subprocess.PIPE,
+            shell=True
         )
 
         output, error = process.communicate()
