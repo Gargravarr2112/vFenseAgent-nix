@@ -147,7 +147,7 @@ class NetManager():
 
         """
 
-        logger.debug('Sending message to server')
+        logger.debug('Sending {0} message to server'.format(req_method))
 
         url = os.path.join(self._server_url, uri)
         headers = {'content-type': 'application/json'}
