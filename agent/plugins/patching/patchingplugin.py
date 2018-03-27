@@ -736,8 +736,10 @@ class PatchingPlugin(AgentPlugin):
         self._register_operation(operation)
 
     def check_for_agent_update(self):
-        platform = settings.AgentVersion.split('-')[1]
-        agent_update = AgentUpdateRetriever.get_available_agent_update(platform)
+        agent_version = settings.AgentVersion.split('-')
+        version_string = agent_version[0]
+        platform = agent_version[1]
+        agent_update = AgentUpdateRetriever.get_available_agent_update(platform, version_string)
 
         if agent_update:
             return agent_update.to_dict()
