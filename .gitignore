@@ -22,3 +22,4 @@ certs/
 *.swo
 .DS_Store
 last_uptime
+venv
