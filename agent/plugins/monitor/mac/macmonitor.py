@@ -3,7 +3,7 @@ import subprocess
 
 from src.utils import logger
 
-from monitor.monitoperation import MonitKey
+from plugins.monitor.monitoperation import MonitKey
 
 
 def try_long_cast(string):

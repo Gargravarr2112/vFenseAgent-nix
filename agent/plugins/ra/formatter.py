@@ -1,8 +1,8 @@
 import json
 
 from src.utils import settings
-from serveroperation.sofoperation import OperationKey
-from ra.raoperation import RaKey
+from plugins.serveroperation.sofoperation import OperationKey
+from plugins.ra.raoperation import RaKey
 
 
 def _base_json_object(operation):

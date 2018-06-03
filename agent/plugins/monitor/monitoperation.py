@@ -1,8 +1,8 @@
 from src.utils import settings
 
-from serveroperation.sofoperation import SofOperation
-from serveroperation.sofoperation import OperationKey
-from serveroperation.sofoperation import OperationError
+from src.serveroperation.sofoperation import SofOperation
+from src.serveroperation.sofoperation import OperationKey
+from src.serveroperation.sofoperation import OperationError
 
 
 class MonitOperationValue():

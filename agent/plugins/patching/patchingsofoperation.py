@@ -2,7 +2,7 @@ import json
 
 from collections import namedtuple
 
-from serveroperation.sofoperation import SofOperation, OperationError
+from src.serveroperation.sofoperation import SofOperation, OperationError
 from src.utils import logger
 
 

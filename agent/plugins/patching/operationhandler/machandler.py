@@ -224,13 +224,9 @@ class MacOpHandler():
     def _get_softwareupdate_data(self):
         cmd = [self.softwareupdate, '--list']
 
-        # Little trick to hide the command's output from terminal.
-        with open(os.devnull, 'w') as dev_null:
-            subprocess.call(cmd, stdout=dev_null, stderr=dev_null)
+        return self.utilcmds.run_command(cmd)
 
-    def _append_update_priorities(self, app_dicts):
-        list_data, _ = self.utilcmds.run_command([self.softwareupdate, '-l'])
-
+    def _append_update_priorities(self, app_dicts, list_data):
         for app_dict in app_dicts:
             # default
             app_dict['vendor_severity'] = 'optional'
@@ -242,10 +238,10 @@ class MacOpHandler():
                     if '[recommended]' in line:
                         app_dict['vendor_severity'] = 'recommended'
 
-    def create_apps_from_plist_dicts(self, app_dicts):
+    def create_apps_from_plist_dicts(self, app_dicts, list_data):
         applications = []
 
-        self._append_update_priorities(app_dicts)
+        self._append_update_priorities(app_dicts, list_data)
 
         for app_dict in app_dicts:
             try:
@@ -315,7 +311,7 @@ class MacOpHandler():
             logger.debug("Done downloading catalogs.")
 
             logger.debug("Getting softwareupdate data.")
-            self._get_softwareupdate_data()
+            list_data, _ = self._get_softwareupdate_data()
             logger.debug("Done getting softwareupdate data.")
 
             logger.debug("Crunching available updates data.")
@@ -323,7 +319,7 @@ class MacOpHandler():
 
             self.updates_catalog.create_updates_catalog(plist_app_dicts)
 
-            available_updates = self.create_apps_from_plist_dicts(plist_app_dicts)
+            available_updates = self.create_apps_from_plist_dicts(plist_app_dicts, list_data)
 
             logger.info('Done getting available updates.')
 

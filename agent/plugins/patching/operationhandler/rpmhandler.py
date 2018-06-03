@@ -2,14 +2,14 @@ import os
 import re
 import glob
 
-from serveroperation.sofoperation import *
+from src.serveroperation.sofoperation import *
 from src.utils import logger, settings, updater, utilcmds
 
-from patching.data.application import AppUtils
-from patching.patchingsofoperation import InstallResult, UninstallResult, \
+from plugins.patching.data.application import AppUtils
+from plugins.patching.patchingsofoperation import InstallResult, UninstallResult, \
     PatchingOperationKey, CpuPriority
-from patching.distro.redhat import yum
-from patching.distro.redhat.yum.repos import RepoData, get_primary_file
+from plugins.patching.distro.redhat import yum
+from plugins.patching.distro.redhat.yum.repos import RepoData, get_primary_file
 
 
 class RpmOpHandler():

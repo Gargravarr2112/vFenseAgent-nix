@@ -1,7 +1,7 @@
 import json
 
 from src.utils import settings
-from serveroperation.sofoperation import OperationKey
+from src.serveroperation.sofoperation import OperationKey
 
 
 def _base_json_object(operation):

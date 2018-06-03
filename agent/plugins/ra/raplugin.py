@@ -1,11 +1,11 @@
 import os
 
-from agentplugin import AgentPlugin
-from net import tunnels
+from src.agentplugin import AgentPlugin
+from src.net import tunnels
 from src.utils import logger, settings
 
-from ra import formatter, vine
-from ra.raoperation import RaOperation, RaValue
+from plugins.ra import formatter, vine
+from plugins.ra.raoperation import RaOperation, RaValue
 
 
 class RaPlugin(AgentPlugin):

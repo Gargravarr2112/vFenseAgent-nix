@@ -1,8 +1,8 @@
 import json
 
 from src.utils import settings
-from serveroperation.sofoperation import OperationKey
-from monitor.monitoperation import MonitKey
+from src.serveroperation.sofoperation import OperationKey
+from plugins.monitor.monitoperation import MonitKey
 
 
 def _base_json_object(operation):

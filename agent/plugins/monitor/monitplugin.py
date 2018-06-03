@@ -1,11 +1,11 @@
 import json
 import subprocess
 
-from agentplugin import AgentPlugin
+from src.agentplugin import AgentPlugin
 from src.utils import RepeatTimer, logger, settings, systeminfo
 
-from monitor.monitoperation import MonitOperation, MonitOperationValue, MonitKey
-from monitor.mac.macmonitor import MacMonitor
+from plugins.monitor.monitoperation import MonitOperation, MonitOperationValue, MonitKey
+from plugins.monitor.mac.macmonitor import MacMonitor
 
 
 class MonitorPlugin(AgentPlugin):

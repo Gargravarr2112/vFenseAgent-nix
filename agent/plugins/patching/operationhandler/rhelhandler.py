@@ -10,11 +10,11 @@ import time
 
 from src.utils import logger, settings, utilcmds
 
-from patching.distro.redhat import yum
-from patching.operationhandler.rpmhandler import RpmOpHandler
+from plugins.patching.distro.redhat import yum
+from plugins.patching.operationhandler.rpmhandler import RpmOpHandler
 
-from patching.data.application import AppUtils
-from patching.patchingsofoperation import InstallResult, UninstallResult
+from plugins.patching.data.application import AppUtils
+from plugins.patching.patchingsofoperation import InstallResult, UninstallResult
 
 
 class PkgKeys():

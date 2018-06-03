@@ -2,7 +2,7 @@
 Helps read agent settings from the agent.config file. As of now, its read-only.
 It won't save any changes back to the file.
 """
-import ConfigParser
+import configparser
 import sys
 import os
 import shutil

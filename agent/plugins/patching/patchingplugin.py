@@ -47,7 +47,7 @@ class PatchingPlugin(AgentPlugin):
             # List to check RedHat derived distros that use yum.
             _redhat = 'red hat enterprise linux server'
             _rpm_distros = ['fedora', 'centos', 'centos linux']
-            _debian_distros = ['debian', 'ubuntu', 'linuxmint']
+            _debian_distros = ['debian', 'ubuntu', 'linuxmint', 'devuan']
 
             if distro == _redhat:
                 from operationhandler.rhelhandler import RhelOpHandler

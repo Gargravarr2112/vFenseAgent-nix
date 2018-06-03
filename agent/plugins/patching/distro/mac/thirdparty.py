@@ -6,7 +6,7 @@ import os
 import subprocess
 
 from src.utils import logger
-from patching.data.application import Application, AppUtils
+from plugins.patching.data.application import Application, AppUtils
 
 
 class ThirdPartyManager():

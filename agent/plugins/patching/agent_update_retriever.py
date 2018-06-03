@@ -1,5 +1,5 @@
 import json
-import urllib2
+import urllib
 
 from datetime import datetime
 from src.utils import settings, logger
@@ -60,7 +60,7 @@ class AgentUpdateRetriever():
             'https://api.github.com/repos/toppatch/vFenseAgent-nix/releases'
 
         try:
-            response = urllib2.urlopen(releases_api)
+            response = urllib.urlopen(releases_api)
             releases = json.loads(response.read())
 
             #version_string = settings.AgentVersion.split('-')[0]
@@ -135,7 +135,7 @@ class AgentUpdateRetriever():
 
         except Exception as e:
             logger.error("Could not check for available agent update.")
-            print "error: %s" % e
+            print("error: %s" % e)
             logger.exception(e)
 
         return agent_update
