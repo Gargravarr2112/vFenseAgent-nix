@@ -8,7 +8,7 @@ import time
 from src.utils import settings
 from src.utils import logger
 from src.utils.distro.mac import launchd
-from src.utils.distro.mac.plist import PlistInterface
+from src.utils.distro.mac.plist import PlistParser
 
 from patching.patchingsofoperation import CpuPriority
 
@@ -24,7 +24,7 @@ class PkgInstaller():
         self.installer_cmd = '/usr/sbin/installer'
         self.softwareupdate_cmd = '/usr/sbin/softwareupdate'
 
-        self.plist = PlistInterface()
+        self.plist = PlistParser()
 
     # Uses installer tool to install pkgs
     def installer(self, pkg, proc_niceness):

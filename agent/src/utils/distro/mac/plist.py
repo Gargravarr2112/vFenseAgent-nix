@@ -5,12 +5,12 @@ import subprocess
 from src.utils import logger
 
 
-class PlistInterface:
+class PlistParser:
     def __init__(self):
         pass
 
+    ##### Load and parse PList #####
     def read_plist(self, plist_path):
-
         """
         Reads data from a plist file. Keys in the plist files are used for the
         dict keys.
@@ -28,55 +28,9 @@ class PlistInterface:
             logger.exception(e)
 
         return {}
-
-    def get_plist_app_dicts(self, plist_path):
-        """
-        Returns a list metadata of applications retrieved from the plist.
-        """
-
-        try:
-            data = self.read_plist(plist_path)
-            return data.get('phaseResultsArray', [])
-        except Exception as e:
-            logger.error("Failed getting update apps from plist.")
-            logger.exception(e)
-
-        return {}
-
-    def get_plist_app_dicts_from_string(self, string):
-        """
-        Returns a list of metadata of applications retrieved from the string.
-        """
-        data = self.read_plist_string(string)
-        return data.get('phaseResultsArray', [])
-
-    def get_app_dict_from_plist(self, plist_path, app_name):
-        """
-        Returns dictionary with data corresponding to the app_name given.
-        """
-        try:
-            app_dicts = self.get_plist_app_dicts(plist_path)
-
-            for app_dict in app_dicts:
-                if app_dict.get('name', '') == app_name:
-                    return app_dict
-
-        except Exception as e:
-            logger.error("Failed getting info from plist for: " + app_name)
-            logger.exception(e)
-
-        return {}
-
-    def get_product_key_from_app_dict(self, app_dict):
-        return app_dict.get('productKey', '')
-
-    def get_product_key(self, plist, app_name):
-        app_data = self.get_app_dict_from_plist(plist, app_name)
-
-        return self.get_product_key_from_app_dict(app_data)
+    
 
     def read_plist_string(self, string):
-
         """
         Reads data from a string. Keys in the plist files are used for the
         dict keys.
@@ -95,6 +49,60 @@ class PlistInterface:
             logger.exception(e)
 
         return {}
+
+    ##### Retrieve data from the PList #####
+    def get_plist_app_dicts(self, plist):
+        """
+        Returns a list metadata of applications retrieved from the plist.
+        """
+        try:
+            if plist.get('LastResultCode') != 0:
+                raise ChildProcessError("MacOS System Update command failed previous run")
+            return plist.get('RecommendedUpdates', [])
+        except Exception as e:
+            logger.error("Failed getting update apps from plist.")
+            logger.exception(e)
+
+        return {}
+
+    def get_plist_app_dicts_from_string(self, string):
+        """
+        Wraps get_list_app_dicts, directly from a string
+        """
+        data = self.read_plist_string(string)
+        return self.get_plist_app_dicts(data)
+    
+    def get_plist_app_dicts_from_file(self, plist_path):
+        """
+        Wraps get_list_app_dicts, directly from a file
+        """
+        data = self.read_plist(plist_path)
+        return self.get_plist_app_dicts(data)
+
+    def get_app_dict_from_plist(self, plist_path, app_name):
+        """
+        Returns dictionary with data corresponding to the app_name given.
+        """
+        try:
+            app_dicts = self.get_plist_app_dicts_from_file(plist_path)
+
+            for app_dict in app_dicts:
+                if app_dict.get('name', '') == app_name:
+                    return app_dict
+
+        except Exception as e:
+            logger.error("Failed getting info from plist for: " + app_name)
+            logger.exception(e)
+
+        return {}
+
+    def get_product_key_from_app_dict(self, app_dict):
+        return app_dict.get('productKey', '')
+
+    def get_product_key(self, plist, app_name):
+        app_data = self.get_app_dict_from_plist(plist, app_name)
+
+        return self.get_product_key_from_app_dict(app_data)
 
     def convert_plist(self, plist_path, new_file_path, frmt='xml1'):
 

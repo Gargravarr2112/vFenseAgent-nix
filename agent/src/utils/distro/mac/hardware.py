@@ -2,7 +2,7 @@ import threading
 import time
 
 from src.utils import settings, logger, utilcmds
-from src.utils.distro.mac import plist
+from src.utils.distro.mac.plist import PlistParser
 
 class MacHardware():
 
@@ -27,7 +27,7 @@ class MacHardware():
         #
         # if os.path.exists(self.hardware_file_path):
         #     os.remove(self.hardware_file_path)
-        self.plist = plist.PlistInterface()
+        self.plist = PlistParser()
         self.utilcmds = utilcmds.UtilCmds()
 
     def timeout_process(self, data_type):

@@ -7,7 +7,7 @@ import hashlib
 import urllib
 
 from src.utils import logger, settings, utilcmds, updater
-from src.utils.distro.mac.plist import PlistInterface
+from src.utils.distro.mac.plist import PlistParser
 from src.utils.misc.htmlstripper import BodyHTMLStripper
 
 from plugins.patching.agent_update_retriever import AgentUpdateRetriever
@@ -24,6 +24,7 @@ class MacOpHandler():
     def __init__(self):
         # Initialize mac table stuff.
         self.softwareupdate = '/usr/sbin/softwareupdate'
+        self.softwareplist = '/Library/Preferences/com.apple.SoftwareUpdate.plist'
 
         self._catalog_directory = \
             os.path.join(settings.AgentDirectory, 'catalogs')
@@ -37,7 +38,7 @@ class MacOpHandler():
         self.utilcmds = utilcmds.UtilCmds()
         self.pkg_installer = PkgInstaller()
         self.dmg_installer = DmgInstaller()
-        self.plist = PlistInterface()
+        self.plist = PlistParser()
         self.updates_catalog = UpdatesCatalog(
             self._catalog_directory,
             os.path.join(settings.TempDirectory, 'updates_catalog.json')
@@ -221,16 +222,11 @@ class MacOpHandler():
         return s.get_data()
 
     def _get_softwareupdate_data(self):
-        cmd = [self.softwareupdate, '-l', '-f', self._updates_plist]
+        cmd = [self.softwareupdate, '--list']
 
         # Little trick to hide the command's output from terminal.
         with open(os.devnull, 'w') as dev_null:
             subprocess.call(cmd, stdout=dev_null, stderr=dev_null)
-
-        cmd = ['/bin/cat', self._updates_plist]
-        output, _ = self.utilcmds.run_command(cmd)
-
-        return output
 
     def _append_update_priorities(self, app_dicts):
         list_data, _ = self.utilcmds.run_command([self.softwareupdate, '-l'])
@@ -319,17 +315,15 @@ class MacOpHandler():
             logger.debug("Done downloading catalogs.")
 
             logger.debug("Getting softwareupdate data.")
-            avail_data = self._get_softwareupdate_data()
+            self._get_softwareupdate_data()
             logger.debug("Done getting softwareupdate data.")
 
             logger.debug("Crunching available updates data.")
-            plist_app_dicts = \
-                self.plist.get_plist_app_dicts_from_string(avail_data)
+            plist_app_dicts = self.plist.get_plist_app_dicts_from_file(self.softwareplist)
 
             self.updates_catalog.create_updates_catalog(plist_app_dicts)
 
-            available_updates = \
-                self.create_apps_from_plist_dicts(plist_app_dicts)
+            available_updates = self.create_apps_from_plist_dicts(plist_app_dicts)
 
             logger.info('Done getting available updates.')
 

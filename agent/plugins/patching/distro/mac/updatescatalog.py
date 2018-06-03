@@ -4,14 +4,14 @@ import glob
 
 from src.utils import logger
 from src.utils import settings
-from src.utils.distro.mac.plist import PlistInterface
+from src.utils.distro.mac.plist import PlistParser
 
 
 class UpdatesCatalog:
     def __init__(self, catalogs_dir, catalog_filename):
         self.catalogs_dir = catalogs_dir
         self.catalog_filename = catalog_filename
-        self.plist = PlistInterface()
+        self.plist = PlistParser()
 
     def create_updates_catalog(self, update_apps):
         """
