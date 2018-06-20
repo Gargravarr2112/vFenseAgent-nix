@@ -3,7 +3,7 @@ import platform
 import subprocess
 import socket
 
-from distro import mac
+from src.utils.distro import mac
 from src.utils import hardware, logger
 
 
