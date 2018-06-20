@@ -1,4 +1,4 @@
-import Queue
+import asyncio.queues as Queue
 
 from src.utils import logger
 
