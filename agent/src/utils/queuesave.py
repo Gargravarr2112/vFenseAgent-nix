@@ -1,9 +1,9 @@
 import os
-import cPickle
+import pickle
 
 from src.utils import settings, logger
-from serveroperation.operationqueue import OperationQueue
-from serveroperation.sofoperation import SofOperation, ResultOperation
+from src.serveroperation.operationqueue import OperationQueue
+from src.serveroperation.sofoperation import SofOperation, ResultOperation
 
 def save_operation_queue(queue):
     save_queue(queue, settings.operation_queue_file)
@@ -43,7 +43,7 @@ def save_queue(queue, file_path, protocol=-1):
         with open(file_path, 'w') as _file:
             cPickle.dump(savable_dump, _file, protocol)
 
-        os.chmod(file_path, 0600)
+        os.chmod(file_path, 600)
 
     except Exception as e:
         logger.error("Failed to dump queue to file: {0}".format(file_path))
@@ -68,7 +68,7 @@ def load_queue(file_path):
     try:
 
         with open(file_path, 'r') as _file:
-            loaded = cPickle.load(_file)
+            loaded = pickle.load(_file)
 
     except Exception as e:
         logger.error("Failed to load operations from: {0}".format(file_path))
