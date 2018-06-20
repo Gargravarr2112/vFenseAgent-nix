@@ -3,7 +3,7 @@ import sys
 import os
 import time
 import inspect
-import urllib2
+import requests
 
 from src.utils import settings
 from src.utils import logger
@@ -108,7 +108,7 @@ class MainCore():
     def internet_on(self):
 
         try:
-            urllib2.urlopen('http://www.google.com', timeout=3)
+            requests.get('http://www.google.com', timeout=3)
             logger.debug('Internet connection detected.')
             return True
 
