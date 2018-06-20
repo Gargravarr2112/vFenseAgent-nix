@@ -2,7 +2,7 @@ import subprocess
 import re
 import platform
 
-from distro.mac.hardware import MacHardware
+from src.utils.distro.mac.hardware import MacHardware
 from src.utils import settings, logger
 
 
