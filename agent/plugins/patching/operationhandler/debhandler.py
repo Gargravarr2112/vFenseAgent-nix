@@ -4,6 +4,8 @@ import urllib
 import shutil
 import hashlib
 
+import apt
+
 from datetime import datetime
 
 from src.utils import settings, logger, utilcmds, updater
@@ -50,6 +52,7 @@ class DebianHandler():
 
     def __init__(self):
         self.update_notifier_installed = False
+        self.cache = apt.Cache()
 
         self.utilcmds = utilcmds.UtilCmds()
         self._check_for_dependencies()
@@ -81,42 +84,27 @@ class DebianHandler():
 
         logger.debug('Updating index.')
 
-        cmd = [self.APT_GET_EXE, 'update']
-        # TODO: if failure return an indication
-        _, err = self.utilcmds.run_command(cmd)
-        if err:
+        try:
+            self.cache.update()
+        except Exception as err:
             logger.error(err)
 
         logger.debug('Done updating index.')
 
     # TODO: find something better
     def _get_install_date(self, package_name):
-        """Get the install date of a package.
-
-        Checks the modification time of the "{package_name}.list"
-        file for each package.
-
+        """
+        Get the install date of a package.
         """
 
-        #TODO: other possible architectures that should be added?
-        default_extension = '.list'
-        amd64_extension = ':amd64.list'
-        i386_extension = ':i386.list'
-
-        #Try to obtain pkg installed-date
-        package_path = self.PKG_INSTALL_DATE_DIR + package_name
-
-        # TODO: test to see if this order of checking is corrrect.
-        if os.path.exists(package_path + default_extension):
-            package_path = package_path + default_extension
-        elif os.path.exists(package_path + amd64_extension):
-            package_path = package_path + amd64_extension
-        elif os.path.exists(package_path + i386_extension):
-            package_path = package_path + i386_extension
+        if self.cache.has_key(package_name):
+            pkg = self.cache[package_name]
+            if pkg.installed:
+                return pkg.install_date
+            else:
+                logger.debug("Requested install date for package {0} that is not installed".format(package_name))
         else:
-            return ''  # Could not find package
-
-        return os.path.getmtime(package_path)
+            logger.debug("Requested install date for unknown package {0}".format(package_name))
 
     def _get_release_date(self, uri):
 
@@ -341,13 +329,12 @@ class DebianHandler():
         Return:
         update_package_list -- list of the package names in need of update.
         """
-
-        # DO NOT REMOVE -s. Upgrade is simulated to parse out
-        # the packages that need to be updated.
-        cmd = [self.APT_GET_EXE, '-s', 'upgrade']
-        result, err = self.utilcmds.run_command(cmd)
-
-        return self._parse_packages_to_install(result)
+        update_package_list = []
+        self.cache.open()
+        pending_upgrades = self.cache.get_changes()
+        for package in pending_upgrades:
+            update_package_list.append(package.name)
+        return update_package_list
 
     def _get_installed_packages(self):
         """Return all of the installed packages in a dictionary.
@@ -355,14 +342,9 @@ class DebianHandler():
         Ex: {'pkg': {...data...}}
         """
 
-        all_pkgs_dict = self._parse_file(self.PKG_STATUS_FILE)
-
-        installed_pkgs_dict = {}
-        for pkg in all_pkgs_dict:
-
-            status = all_pkgs_dict[pkg].get(PkgDictValues.installed, '')
-            if status == self.INSTALLED_STATUS:
-                installed_pkgs_dict[pkg] = all_pkgs_dict[pkg]
+        installed_packages_dict = []
+        installed_packages = apt.cache.FilteredCache(self.cache)
+        installed_packages.set_filter(apt.cache.InstalledFilter)
 
         return installed_pkgs_dict
 
